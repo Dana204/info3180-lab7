@@ -4,9 +4,11 @@ Jinja2 Documentation:    http://jinja.pocoo.org/2/documentation/
 Werkzeug Documentation:  http://werkzeug.pocoo.org/documentation/
 This file creates your application.
 """
-
-from app import app
-from flask import render_template, request
+import os
+from app import app, filefolder
+from flask import render_template, request, jsonify
+from app.forms import UploadForm
+from werkzeug.utils import secure_filename
 
 ###
 # Routing for your application.
@@ -16,18 +18,28 @@ from flask import render_template, request
 # Please create all new routes and view functions above this route.
 # This route is now our catch all route for our VueJS single page
 # application.
+
 @app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def index(path):
-    """
-    Because we use HTML5 history mode in vue-router we need to configure our
-    web server to redirect all routes to index.html. Hence the additional route
-    "/<path:path".
+@app.route('/')
+def index():
+    form = UploadForm()
+   
+    return render_template('index.html', form=form)
 
-    Also we will render the initial webpage and then let VueJS take control.
-    """
-    return render_template('index.html')
-
+@app.route('/api/upload', methods=['POST'])
+def upload():
+    form=UploadForm()
+    if request.method == "POST" and form.validate_on_submit():
+        description = request.form['description']
+        file = request.files['uploadImage']
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(filefolder, filename))
+        result = [{'message': 'File Upload Successful', 'filename': filename, 'description': description}]
+        return jsonify(result=result)
+    else:
+        error_collection = form_errors(form)
+        error = [{'errors': error_collection}]
+        return  jsonify(errors=error)
 
 # Here we define a function to collect form errors from Flask-WTF
 # which we can later use
